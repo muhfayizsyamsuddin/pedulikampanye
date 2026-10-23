@@ -287,6 +287,83 @@
         </section>
     </main>
 
+    <div
+        id="delete-modal"
+        class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 p-4"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="delete-modal-title"
+    >
+        <div class="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+
+            <div class="flex items-start gap-4">
+                <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-red-50 text-red-600">
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    >
+                        <path d="M3 6h18"/>
+                        <path d="M8 6V4h8v2"/>
+                        <path d="m19 6-1 14H6L5 6"/>
+                        <path d="M10 11v5"/>
+                        <path d="M14 11v5"/>
+                    </svg>
+                </div>
+
+                <div class="flex-1">
+                    <h2
+                        id="delete-modal-title"
+                        class="text-lg font-bold text-slate-800"
+                    >
+                        Hapus percakapan?
+                    </h2>
+
+                    <p class="mt-2 text-sm leading-6 text-slate-600">
+                        Apakah kamu yakin ingin menghapus percakapan ini?
+                        Semua pesan di dalamnya juga akan dihapus secara permanen.
+                    </p>
+
+                    <p
+                        id="delete-modal-name"
+                        class="mt-3 wrap-break-word rounded-lg bg-slate-50 p-3 text-sm font-medium text-slate-700"
+                    ></p>
+
+                    <p
+                        id="delete-modal-error"
+                        class="mt-2 hidden text-sm text-red-600"
+                        role="alert"
+                    ></p>
+                </div>
+            </div>
+
+            <div class="mt-6 flex justify-end gap-3">
+                <button
+                    id="cancel-delete"
+                    type="button"
+                    class="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                >
+                    Batal
+                </button>
+
+                <button
+                    id="confirm-delete"
+                    type="button"
+                    class="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                    Hapus percakapan
+                </button>
+            </div>
+
+        </div>
+    </div>
+
     <script>
         const form = document.getElementById('chat-form');
         const input = document.getElementById('message');
@@ -398,22 +475,82 @@
             conversationList.prepend(item);
         }
 
-        conversationList.addEventListener('click', async function (event) {
+        const deleteModal = document.getElementById('delete-modal');
+        const deleteModalName = document.getElementById('delete-modal-name');
+        const deleteModalError = document.getElementById('delete-modal-error');
+        const cancelDeleteButton = document.getElementById('cancel-delete');
+        const confirmDeleteButton = document.getElementById('confirm-delete');
+
+        let pendingDeleteButton = null;
+
+        function openDeleteModal(button) {
+            pendingDeleteButton = button;
+
+            const item = button.closest('[data-conversation-item]');
+            const title = item
+                ?.querySelector('[data-conversation-title]')
+                ?.textContent.trim();
+
+            deleteModalName.textContent = title || 'Percakapan ini';
+            deleteModalError.textContent = '';
+            deleteModalError.classList.add('hidden');
+
+            deleteModal.classList.remove('hidden');
+            deleteModal.classList.add('flex');
+
+            confirmDeleteButton.disabled = false;
+            confirmDeleteButton.textContent = 'Hapus percakapan';
+
+            cancelDeleteButton.focus();
+        }
+
+        function closeDeleteModal() {
+            deleteModal.classList.add('hidden');
+            deleteModal.classList.remove('flex');
+            pendingDeleteButton = null;
+        }
+
+        conversationList.addEventListener('click', function (event) {
             const button = event.target.closest('[data-delete-url]');
 
             if (!button) return;
 
             event.preventDefault();
+            openDeleteModal(button);
+        });
+
+        cancelDeleteButton.addEventListener('click', closeDeleteModal);
+
+        deleteModal.addEventListener('click', function (event) {
+            if (event.target === deleteModal) {
+                closeDeleteModal();
+            }
+        });
+
+        document.addEventListener('keydown', function (event) {
+            if (
+                event.key === 'Escape' &&
+                !deleteModal.classList.contains('hidden')
+            ) {
+                closeDeleteModal();
+            }
+        });
+
+        confirmDeleteButton.addEventListener('click', async function () {
+            const button = pendingDeleteButton;
+
+            if (!button || confirmDeleteButton.disabled) return;
 
             const id = button.dataset.conversationId;
+            const wasActiveConversation =
+                String(conversationId) === String(id);
 
-            if (!window.confirm(
-                'Hapus percakapan ini beserta semua pesannya secara permanen?'
-            )) {
-                return;
-            }
+            confirmDeleteButton.disabled = true;
+            cancelDeleteButton.disabled = true;
+            confirmDeleteButton.textContent = 'Menghapus...';
 
-            button.disabled = true;
+            deleteModalError.textContent = '';
+            deleteModalError.classList.add('hidden');
 
             try {
                 const response = await fetch(button.dataset.deleteUrl, {
@@ -429,13 +566,18 @@
                 const data = await response.json();
 
                 if (!response.ok) {
-                    throw new Error(data.message || 'Gagal menghapus percakapan.');
+                    throw new Error(
+                        data.message || 'Gagal menghapus percakapan.'
+                    );
                 }
+
+                closeDeleteModal();
 
                 button.closest('[data-conversation-item]')?.remove();
 
                 if (!conversationList.querySelector('[data-conversation-item]')) {
                     const emptyMessage = document.createElement('p');
+
                     emptyMessage.id = 'conversation-empty';
                     emptyMessage.className = 'text-sm text-slate-500';
                     emptyMessage.textContent = 'Belum ada percakapan tersimpan.';
@@ -443,15 +585,22 @@
                     conversationList.appendChild(emptyMessage);
                 }
 
-                if (String(conversationId) === String(id)) {
+                if (wasActiveConversation) {
                     window.location.href = @json(route('chat.index'));
                     return;
                 }
 
-                statusElement.textContent = data.message;
+                statusElement.textContent =
+                    data.message || 'Percakapan berhasil dihapus.';
+
             } catch (error) {
-                statusElement.textContent = error.message;
-                button.disabled = false;
+                deleteModalError.textContent = error.message;
+                deleteModalError.classList.remove('hidden');
+
+            } finally {
+                confirmDeleteButton.disabled = false;
+                cancelDeleteButton.disabled = false;
+                confirmDeleteButton.textContent = 'Hapus percakapan';
             }
         });
 
