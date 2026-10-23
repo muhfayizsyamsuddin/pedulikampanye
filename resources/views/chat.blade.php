@@ -159,6 +159,32 @@
             </section>
 
             <section class="rounded-2xl border border-slate-200 bg-white p-5">
+                <h2 class="font-semibold">Pengaturan AI</h2>
+
+                <label for="model-select" class="mt-4 mb-2 block text-sm font-medium">
+                    Pilih model AI
+                </label>
+
+                <select
+                    id="model-select"
+                    class="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm focus:border-emerald-500 focus:outline-none"
+                >
+                    @foreach (config('services.openrouter.models', []) as $modelId => $label)
+                        <option
+                            value="{{ $modelId }}"
+                            @selected($modelId === config('services.openrouter.model'))
+                        >
+                            {{ $label }}
+                        </option>
+                    @endforeach
+                </select>
+
+                <p class="mt-2 text-xs leading-5 text-slate-500">
+                    Pilihan model digunakan untuk pesan berikutnya.
+                </p>
+            </section>
+
+            <section class="rounded-2xl border border-slate-200 bg-white p-5">
                 <h2 class="font-semibold">Riwayat percakapan</h2>
 
                 <div id="conversation-list" class="mt-3 space-y-2">
@@ -632,7 +658,8 @@
                     },
                     body: JSON.stringify({
                         message: trimmedMessage,
-                        conversation_id: conversationId
+                        conversation_id: conversationId,
+                        model: selectedModel
                     })
                 });
 
@@ -702,6 +729,30 @@
 
         newChatButton.addEventListener('click', function () {
             window.location.href = @json(route('chat.index'));
+        });
+
+        const modelSelect = document.getElementById('model-select');
+
+        const savedModel = localStorage.getItem('pedulikampanye-model');
+
+        if (
+            savedModel &&
+            Array.from(modelSelect.options).some(
+                option => option.value === savedModel
+            )
+        ) {
+            modelSelect.value = savedModel;
+        }
+
+        let selectedModel = modelSelect.value;
+
+        modelSelect.addEventListener('change', function () {
+            selectedModel = this.value;
+
+            localStorage.setItem('pedulikampanye-model', selectedModel);
+
+            statusElement.textContent =
+                `Model dipilih: ${this.options[this.selectedIndex].text}`;
         });
     </script>
 </body>

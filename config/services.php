@@ -37,7 +37,16 @@ return [
 
     'openrouter' => [
         'api_key' => env('OPENROUTER_API_KEY'),
-        'model' => env('OPENROUTER_MODEL', 'nvidia/nemotron-3.5-lightning:free'),
+        'models' => [
+            'nvidia/nemotron-3.5-lightning:free'
+                => 'Nemotron 3.5 Lightning (Gratis)',
+
+            'google/gemma-4-26b-a4b-it:free'
+                => 'Gemma 4 26B A4B IT (Gratis)',
+
+            'cohere/north-mini-code:free'
+                => 'North Mini Code (Gratis)',
+        ],
         'base_url' => env(
             'OPENROUTER_URL',
             'https://openrouter.ai/api/v1'

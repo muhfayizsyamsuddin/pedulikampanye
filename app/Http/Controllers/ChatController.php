@@ -8,18 +8,28 @@ use App\Services\OpenRouterService;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 use RuntimeException;
 
 class ChatController extends Controller
 {
     public function index()
     {
+        $models = config('services.openrouter.models', []);
+        $configuredDefault = config('services.openrouter.model');
+
+        $selectedModel = isset($models[$configuredDefault])
+            ? $configuredDefault
+            : array_key_first($models);
+
         return view('chat', [
             'conversations' => Conversation::latest('updated_at')
                 ->limit(30)
                 ->get(),
             'activeConversation' => null,
             'initialMessages' => [],
+            'models' => $models,
+            'selectedModel' => $selectedModel,
         ]);
     }
 
@@ -33,6 +43,12 @@ class ChatController extends Controller
             ])
             ->values()
             ->all();
+        $models = config('services.openrouter.models', []);
+        $configuredDefault = config('services.openrouter.model');
+
+        $selectedModel = isset($models[$configuredDefault])
+            ? $configuredDefault
+            : array_key_first($models);
 
         return view('chat', [
             'conversations' => Conversation::latest('updated_at')
@@ -40,6 +56,8 @@ class ChatController extends Controller
                 ->get(),
             'activeConversation' => $conversation,
             'initialMessages' => $initialMessages,
+            'models' => $models,
+            'selectedModel' => $selectedModel,
         ]);
     }
 
@@ -65,7 +83,16 @@ class ChatController extends Controller
                 'integer',
                 'exists:conversations,id',
             ],
+            'model' => [
+                'required',
+                'string',
+                Rule::in(array_keys(
+                    config('services.openrouter.models', [])
+                )),
+            ],
         ]);
+
+        $selectedModel = $validated['model'];
 
         $message = trim($validated['message']);
 
@@ -90,7 +117,11 @@ class ChatController extends Controller
 
         try {
             // Panggil AI sebelum menyimpan pasangan pesan baru.
-            $reply = $openRouter->chat($history, $message);
+            $reply = $openRouter->chat(
+                $history,
+                $message,
+                $selectedModel
+            );
 
             // Buat percakapan saat pesan pertama berhasil diproses.
             if (! $conversation) {
