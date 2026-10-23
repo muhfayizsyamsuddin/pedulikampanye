@@ -36,11 +36,11 @@ return [
     ],
 
     'openrouter' => [
-        'key' => env('OPENROUTER_API_KEY'),
-        'model' => env('OPENROUTER_MODEL', 'openrouter/free'),
-        'url' => env(
+        'api_key' => env('OPENROUTER_API_KEY'),
+        'model' => env('OPENROUTER_MODEL', 'nvidia/nemotron-3.5-lightning:free'),
+        'base_url' => env(
             'OPENROUTER_URL',
-            'https://openrouter.ai/api/v1/chat/completions'
+            'https://openrouter.ai/api/v1'
         ),
     ],
 
