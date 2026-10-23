@@ -41,16 +41,13 @@ return [
             'nvidia/nemotron-3.5-lightning:free'
                 => 'Nemotron 3.5 Lightning (Gratis)',
 
-            'google/gemma-4-26b-a4b-it:free'
-                => 'Gemma 4 26B A4B IT (Gratis)',
+            'google/gemma-4-31b-it:free'
+                => 'Gemma 4 31B IT (Gratis)',
 
             'cohere/north-mini-code:free'
                 => 'North Mini Code (Gratis)',
         ],
-        'base_url' => env(
-            'OPENROUTER_URL',
-            'https://openrouter.ai/api/v1'
-        ),
+        'base_url' => 'https://openrouter.ai/api/v1'
     ],
 
 ];

@@ -8,11 +8,25 @@ use RuntimeException;
 
 class OpenRouterService
 {
-    public function chat(array $history, string $message): string
+    public function chat(
+        array $history,
+        string $message,
+        ?string $requestedModel = null
+    ): string
     {
         $apiKey = config('services.openrouter.api_key');
         $baseUrl = config('services.openrouter.base_url');
-        $model = config('services.openrouter.model');
+
+        $model = trim((string) (
+            $requestedModel
+            ?: config('services.openrouter.model', '')
+        ));
+
+        if ($model === '') {
+            throw new RuntimeException(
+                'ID model OpenRouter kosong. Periksa konfigurasi dan pilihan model.'
+            );
+        }
 
         if (empty($apiKey)) {
             throw new RuntimeException(

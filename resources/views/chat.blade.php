@@ -75,10 +75,10 @@
         }
     </style>
 </head>
-<body class="min-h-screen bg-slate-50 text-slate-800">
+<body class="flex h-dvh flex-col overflow-hidden bg-slate-50 text-slate-800">
 
     <header class="border-b border-slate-200 bg-white">
-        <div class="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
+        <div class="flex w-full items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
             <a href="/" class="flex items-center gap-3">
                 <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-600 text-xl font-bold text-white">
                     P
@@ -101,9 +101,9 @@
         </div>
     </header>
 
-    <main class="mx-auto grid max-w-6xl gap-6 px-5 py-8 lg:grid-cols-[280px_1fr]">
+    <main class="mx-0 grid min-h-0 w-full max-w-none flex-1 grid-cols-1 grid-rows-[minmax(0,1fr)_minmax(0,2fr)] gap-4 overflow-hidden px-3 py-3 sm:px-5 lg:grid-cols-[280px_minmax(0,1fr)] lg:grid-rows-1 lg:gap-5 lg:px-6">
 
-        <aside class="space-y-5">
+        <aside class="min-h-0 space-y-4 overflow-y-auto pr-1">
             <section class="rounded-2xl border border-slate-200 bg-white p-5">
                 <p class="text-xs font-semibold uppercase tracking-wider text-emerald-700">
                     Tentang asisten
@@ -246,7 +246,7 @@
             </p>
         </aside>
 
-        <section class="flex min-h-162.5 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <section class="flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
 
             <div class="border-b border-slate-200 px-5 py-4 sm:px-7">
                 <h2 class="font-bold">Asisten PeduliKampanye</h2>
@@ -258,7 +258,7 @@
             <div
                 id="messages"
                 aria-live="polite"
-                class="flex-1 space-y-5 overflow-y-auto p-5 sm:p-7"
+                class="min-h-0 flex-1 space-y-5 overflow-y-auto p-5 sm:p-7"
             >
                 <div class="flex items-start gap-3">
                     <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-600 font-bold text-white">
@@ -279,7 +279,7 @@
             </div>
 
             <div class="border-t border-slate-200 p-4 sm:p-5">
-                <form id="chat-form" class="mx-auto max-w-3xl">
+                <form id="chat-form" class="w-full max-w-none">
                     <label for="message" class="mb-2 block text-sm font-medium">
                         Pesan kamu
                     </label>
