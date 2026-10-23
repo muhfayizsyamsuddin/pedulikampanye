@@ -163,25 +163,41 @@
 
                 <div id="conversation-list" class="mt-3 space-y-2">
                     @forelse ($conversations as $conversation)
-                        <a
-                            href="{{ route('chat.show', $conversation) }}"
-                            data-conversation-id="{{ $conversation->id }}"
-                            class="block rounded-xl border border-slate-200 px-3 py-2 text-sm transition hover:border-emerald-500 hover:bg-emerald-50"
+                        <div
+                            data-conversation-item="{{ $conversation->id }}"
+                            class="flex items-stretch gap-1"
                         >
-                            <span
-                                data-conversation-title
-                                class="block wrap-break-word font-medium"
+                            <a
+                                href="{{ route('chat.show', $conversation) }}"
+                                data-conversation-id="{{ $conversation->id }}"
+                                class="min-w-0 flex-1 rounded-xl border px-3 py-2 text-sm transition {{ $activeConversation && $activeConversation->id === $conversation->id ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 hover:border-emerald-500 hover:bg-emerald-50' }}"
                             >
-                                {{ \Illuminate\Support\Str::limit($conversation->title, 55) }}
-                            </span>
+                                <span
+                                    data-conversation-title
+                                    class="block wrap-break-word font-medium"
+                                >
+                                    {{ \Illuminate\Support\Str::limit($conversation->title, 55) }}
+                                </span>
 
-                            <span
-                                data-conversation-time
-                                class="mt-1 block text-xs text-slate-500"
+                                <span
+                                    data-conversation-time
+                                    class="mt-1 block text-xs text-slate-500"
+                                >
+                                    {{ $conversation->updated_at->diffForHumans() }}
+                                </span>
+                            </a>
+
+                            <button
+                                type="button"
+                                data-delete-url="{{ route('chat.destroy', $conversation) }}"
+                                data-conversation-id="{{ $conversation->id }}"
+                                class="rounded-lg px-2 text-xs font-medium text-red-600 hover:bg-red-50"
+                                aria-label="Hapus percakapan"
+                                title="Hapus percakapan"
                             >
-                                {{ $conversation->updated_at->diffForHumans() }}
-                            </span>
-                        </a>
+                                Hapus
+                            </button>
+                        </div>
                     @empty
                         <p id="conversation-empty" class="text-sm text-slate-500">
                             Belum ada percakapan tersimpan.
@@ -330,18 +346,23 @@
         }
 
         function upsertConversationLink(id, title) {
-            let link = Array.from(
-                conversationList.querySelectorAll('[data-conversation-id]')
-            ).find(item => item.dataset.conversationId === String(id));
+            const idString = String(id);
 
-            if (!link) {
+            let item = Array.from(
+                conversationList.querySelectorAll('[data-conversation-item]')
+            ).find(element => element.dataset.conversationItem === idString);
+
+            if (!item) {
                 document.getElementById('conversation-empty')?.remove();
 
-                link = document.createElement('a');
-                link.className =
-                    'block rounded-xl border border-emerald-500 bg-emerald-50 px-3 py-2 text-sm';
+                item = document.createElement('div');
+                item.dataset.conversationItem = idString;
+                item.className = 'flex items-stretch gap-1';
 
-                link.dataset.conversationId = String(id);
+                const link = document.createElement('a');
+                link.dataset.conversationId = idString;
+                link.className =
+                    'min-w-0 flex-1 rounded-xl border border-emerald-500 bg-emerald-50 px-3 py-2 text-sm';
 
                 const titleElement = document.createElement('span');
                 titleElement.dataset.conversationTitle = '';
@@ -352,16 +373,87 @@
                 timeElement.className = 'mt-1 block text-xs text-slate-500';
 
                 link.append(titleElement, timeElement);
+
+                const deleteButton = document.createElement('button');
+                deleteButton.type = 'button';
+                deleteButton.dataset.deleteUrl =
+                    `${conversationBaseUrl}/${encodeURIComponent(idString)}`;
+                deleteButton.dataset.conversationId = idString;
+                deleteButton.className =
+                    'rounded-lg px-2 text-xs font-medium text-red-600 hover:bg-red-50';
+                deleteButton.textContent = 'Hapus';
+                deleteButton.title = 'Hapus percakapan';
+
+                item.append(link, deleteButton);
             }
 
+            const link = item.querySelector('a[data-conversation-id]');
+
             link.href =
-                `${conversationBaseUrl}/${encodeURIComponent(String(id))}`;
+                `${conversationBaseUrl}/${encodeURIComponent(idString)}`;
 
             link.querySelector('[data-conversation-title]').textContent = title;
             link.querySelector('[data-conversation-time]').textContent = 'Baru saja';
 
-            conversationList.prepend(link);
+            conversationList.prepend(item);
         }
+
+        conversationList.addEventListener('click', async function (event) {
+            const button = event.target.closest('[data-delete-url]');
+
+            if (!button) return;
+
+            event.preventDefault();
+
+            const id = button.dataset.conversationId;
+
+            if (!window.confirm(
+                'Hapus percakapan ini beserta semua pesannya secara permanen?'
+            )) {
+                return;
+            }
+
+            button.disabled = true;
+
+            try {
+                const response = await fetch(button.dataset.deleteUrl, {
+                    method: 'DELETE',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document
+                            .querySelector('meta[name="csrf-token"]')
+                            .content
+                    }
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.message || 'Gagal menghapus percakapan.');
+                }
+
+                button.closest('[data-conversation-item]')?.remove();
+
+                if (!conversationList.querySelector('[data-conversation-item]')) {
+                    const emptyMessage = document.createElement('p');
+                    emptyMessage.id = 'conversation-empty';
+                    emptyMessage.className = 'text-sm text-slate-500';
+                    emptyMessage.textContent = 'Belum ada percakapan tersimpan.';
+
+                    conversationList.appendChild(emptyMessage);
+                }
+
+                if (String(conversationId) === String(id)) {
+                    window.location.href = @json(route('chat.index'));
+                    return;
+                }
+
+                statusElement.textContent = data.message;
+            } catch (error) {
+                statusElement.textContent = error.message;
+                button.disabled = false;
+            }
+        });
 
         async function sendMessage(message) {
             const trimmedMessage = message.trim();
@@ -430,13 +522,15 @@
             }
         }
 
-        if (initialMessages.length > 0) {
-            messagesElement.replaceChildren();
+        window.addEventListener('load', function () {
+            if (initialMessages.length > 0) {
+                messagesElement.replaceChildren();
 
-            initialMessages.forEach(item => {
-                addMessage(item.role, item.content);
-            });
-        }
+                initialMessages.forEach(item => {
+                    addMessage(item.role, item.content);
+                });
+            }
+        });
 
         form.addEventListener('submit', function (event) {
             event.preventDefault();

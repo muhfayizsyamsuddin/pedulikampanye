@@ -43,6 +43,15 @@ class ChatController extends Controller
         ]);
     }
 
+    public function destroy(Conversation $conversation)
+    {
+        $conversation->delete();
+
+        return response()->json([
+            'message' => 'Percakapan berhasil dihapus.',
+        ]);
+    }
+
     public function send(
         Request $request,
         OpenRouterService $openRouter

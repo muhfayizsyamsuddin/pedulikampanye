@@ -12,3 +12,7 @@ Route::post('/chat', [ChatController::class, 'send'])
 
 Route::get('/conversations/{conversation}', [ChatController::class, 'show'])
     ->name('chat.show');
+Route::delete(
+    '/conversations/{conversation}',
+    [ChatController::class, 'destroy']
+)->name('chat.destroy');
