@@ -158,6 +158,38 @@
                 </div>
             </section>
 
+            <section class="rounded-2xl border border-slate-200 bg-white p-5">
+                <h2 class="font-semibold">Riwayat percakapan</h2>
+
+                <div id="conversation-list" class="mt-3 space-y-2">
+                    @forelse ($conversations as $conversation)
+                        <a
+                            href="{{ route('chat.show', $conversation) }}"
+                            data-conversation-id="{{ $conversation->id }}"
+                            class="block rounded-xl border border-slate-200 px-3 py-2 text-sm transition hover:border-emerald-500 hover:bg-emerald-50"
+                        >
+                            <span
+                                data-conversation-title
+                                class="block wrap-break-word font-medium"
+                            >
+                                {{ \Illuminate\Support\Str::limit($conversation->title, 55) }}
+                            </span>
+
+                            <span
+                                data-conversation-time
+                                class="mt-1 block text-xs text-slate-500"
+                            >
+                                {{ $conversation->updated_at->diffForHumans() }}
+                            </span>
+                        </a>
+                    @empty
+                        <p id="conversation-empty" class="text-sm text-slate-500">
+                            Belum ada percakapan tersimpan.
+                        </p>
+                    @endforelse
+                </div>
+            </section>
+
             <button
                 id="new-chat"
                 type="button"
@@ -172,7 +204,7 @@
             </p>
         </aside>
 
-        <section class="flex min-h-[650px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <section class="flex min-h-162.5 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
 
             <div class="border-b border-slate-200 px-5 py-4 sm:px-7">
                 <h2 class="font-bold">Asisten PeduliKampanye</h2>
@@ -247,7 +279,15 @@
         const statusElement = document.getElementById('status');
         const newChatButton = document.getElementById('new-chat');
 
-        let conversationHistory = [];
+        const conversationList = document.getElementById('conversation-list');
+
+        const initialMessages = @json($initialMessages);
+
+        let conversationId = @json(
+            $activeConversation ? $activeConversation->id : null
+        );
+
+        const conversationBaseUrl = @json(url('/conversations'));
         function setBubbleContent(bubble, role, content) {
             if (
                 role === 'assistant' &&
@@ -273,15 +313,7 @@
                 : 'max-w-[90%] whitespace-pre-wrap break-words rounded-2xl rounded-tl-sm bg-slate-100 px-4 py-3 text-sm leading-6 sm:max-w-[80%]';
 
             // Gunakan textContent agar respons tidak diperlakukan sebagai HTML.
-            if (
-                role === 'assistant' &&
-                typeof window.renderMarkdown === 'function'
-            ) {
-                bubble.classList.add('chat-markdown');
-                bubble.innerHTML = window.renderMarkdown(content);
-            } else {
-                setBubbleContent(bubble, role, content);
-            }
+            setBubbleContent(bubble, role, content);
 
             if (role === 'assistant') {
                 const avatar = document.createElement('div');
@@ -295,6 +327,40 @@
             messagesElement.scrollTop = messagesElement.scrollHeight;
 
             return bubble;
+        }
+
+        function upsertConversationLink(id, title) {
+            let link = Array.from(
+                conversationList.querySelectorAll('[data-conversation-id]')
+            ).find(item => item.dataset.conversationId === String(id));
+
+            if (!link) {
+                document.getElementById('conversation-empty')?.remove();
+
+                link = document.createElement('a');
+                link.className =
+                    'block rounded-xl border border-emerald-500 bg-emerald-50 px-3 py-2 text-sm';
+
+                link.dataset.conversationId = String(id);
+
+                const titleElement = document.createElement('span');
+                titleElement.dataset.conversationTitle = '';
+                titleElement.className = 'block break-words font-medium';
+
+                const timeElement = document.createElement('span');
+                timeElement.dataset.conversationTime = '';
+                timeElement.className = 'mt-1 block text-xs text-slate-500';
+
+                link.append(titleElement, timeElement);
+            }
+
+            link.href =
+                `${conversationBaseUrl}/${encodeURIComponent(String(id))}`;
+
+            link.querySelector('[data-conversation-title]').textContent = title;
+            link.querySelector('[data-conversation-time]').textContent = 'Baru saja';
+
+            conversationList.prepend(link);
         }
 
         async function sendMessage(message) {
@@ -325,7 +391,7 @@
                     },
                     body: JSON.stringify({
                         message: trimmedMessage,
-                        history: conversationHistory
+                        conversation_id: conversationId
                     })
                 });
 
@@ -343,13 +409,12 @@
                     data.reply
                 );
 
-                conversationHistory.push(
-                    { role: 'user', content: trimmedMessage },
-                    { role: 'assistant', content: data.reply }
-                );
+                conversationId = data.conversation_id;
 
-                // Simpan maksimal 10 pesan sebelumnya untuk konteks.
-                conversationHistory = conversationHistory.slice(-10);
+                upsertConversationLink(
+                    data.conversation_id,
+                    data.title
+                );
 
                 statusElement.textContent =
                     'Jawaban diterima. Periksa kembali informasi faktual.';
@@ -363,6 +428,14 @@
                 input.focus();
                 messagesElement.scrollTop = messagesElement.scrollHeight;
             }
+        }
+
+        if (initialMessages.length > 0) {
+            messagesElement.replaceChildren();
+
+            initialMessages.forEach(item => {
+                addMessage(item.role, item.content);
+            });
         }
 
         form.addEventListener('submit', function (event) {
@@ -385,16 +458,7 @@
         });
 
         newChatButton.addEventListener('click', function () {
-            conversationHistory = [];
-            messagesElement.replaceChildren();
-
-            addMessage(
-                'assistant',
-                'Halo, saya PeduliKampanye AI. Apa yang ingin kamu kerjakan untuk kampanye donasimu?'
-            );
-
-            statusElement.textContent = 'Percakapan baru dimulai.';
-            input.focus();
+            window.location.href = @json(route('chat.index'));
         });
     </script>
 </body>
